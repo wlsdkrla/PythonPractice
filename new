@@ -1,0 +1,251 @@
+from tkinter import *
+from tkinter import Text
+from tkinter import font
+
+g_Tk = Tk()
+g_Tk.geometry("800x700+750+200")
+g_Tk.configure(bg='white')
+
+
+def InitTopText():
+    TempFont = font.Font(g_Tk, size=18, weight='bold', family='Consolas')
+    MainText = Label(g_Tk, bg='white', fg='#00D7FF', font=TempFont, text="찾고 싶은 국가명을 입력하세요")
+    MainText.pack()
+    MainText.place(x=20, y=10)
+
+
+def InitInputLabel():
+    global InputLabel
+    countryName = StringVar()
+    TempFont = font.Font(g_Tk, size=15, weight='bold', family='Consolas')
+    InputLabel = Entry(g_Tk, textvariable=countryName, font=TempFont, background='white', width=20, borderwidth=10,
+                       relief='groove')
+    InputLabel.place(x=10, y=50)
+    countryName = InputLabel.get()
+
+
+def InitSearchButton():
+    TempFont = font.Font(g_Tk, size=12, weight='bold', family='Consolas')
+    button1 = Button(g_Tk, text='기본정보', bg='#00D7FF', borderwidth=12, fg='white', command=Searchkidon)
+    # button1.pack()
+    button1.place(x=270, y=50)
+    button2 = Button(g_Tk, text='사건사고', bg='#00D7FF', borderwidth=12, fg='white', command=SearchSagun)
+    # button2.pack()
+    button2.place(x=370, y=50)
+    button3 = Button(g_Tk, text='지도', bg='#00D7FF', borderwidth=12, fg='white', command=InitMapImage)
+    button3.place(x=470, y=50)
+
+def SearchSagun():
+    global RenderText
+    import urllib.request
+    from urllib.parse import urlencode, quote_plus, unquote
+    url = "http://apis.data.go.kr/1262000/AccidentService/getAccidentList"
+    decode_key = unquote('JHgfal6ar5HcJLqwwuWHnXKH6NM%2BOso8UhT8IYvQPa7kgHgSQPv1UGOmVr42lN%2F3fH92VgXQBV5AdjLzxVc6Dw%3D%3D')
+    pagenum = '1'
+    queryParams = '?' + urlencode({quote_plus('ServiceKey'): decode_key,
+                                   quote_plus('numOfRows'): 10,
+                                   quote_plus('pageNo'): 1,
+                                   quote_plus('countryName'): InputLabel.get()
+                                   })
+    req = urllib.request
+    body = req.urlopen(url + queryParams)
+    req.get_method = lambda: 'GET'
+    response_body = body.read()
+    result = response_body.decode('utf-8')
+
+    def OutputresultSagun():
+        import xml.etree.ElementTree as ET
+        tree = ET.ElementTree(ET.fromstring(result))
+        note = tree.iter('item')
+        for item in note:
+            countryName = item.findtext('name').strip('<div>')
+            news = item.findtext('news').strip('<div>')
+            image = item.findtext('imgUrl').strip('<div>')
+            return '\n'+countryName + '\n' + news + '\n' + image
+
+        return '국가 정보가 없습니다.'
+
+    text = OutputresultSagun()
+    RenderText.insert(INSERT, text)
+
+def Searchkidon():
+    global RenderText
+    import urllib.request
+    from urllib.parse import urlencode, quote_plus, unquote
+    url = " http://apis.data.go.kr/1262000/CountryBasicService/getCountryBasicList"
+    decode_key = unquote('JHgfal6ar5HcJLqwwuWHnXKH6NM%2BOso8UhT8IYvQPa7kgHgSQPv1UGOmVr42lN%2F3fH92VgXQBV5AdjLzxVc6Dw%3D%3D')
+    pagenum = '1'
+    queryParams = '?' + urlencode({quote_plus('ServiceKey'): decode_key,
+                                   quote_plus('numOfRows'): 10,
+                                   quote_plus('pageNo'): 1,
+                                   quote_plus('countryName'): InputLabel.get()
+                                   })
+    req = urllib.request
+    body = req.urlopen(url + queryParams)
+    req.get_method = lambda: 'GET'
+    response_body = body.read()
+    result = response_body.decode('utf-8')
+
+    def OutputresultKibon():
+        import xml.etree.ElementTree as ET
+        tree = ET.ElementTree(ET.fromstring(result))
+        note = tree.iter('item')
+        for item in note:
+            countryName = item.findtext('countryName')
+            basic = item.findtext('basic').strip('<div>')
+            return countryName + '\n' + basic
+        return '국가 정보가 없습니다.'
+
+    text = OutputresultKibon()
+    RenderText.insert(INSERT, text)
+
+
+def InitRenderText():
+    global RenderText
+    RenderTextScrollbar = Scrollbar(g_Tk)
+    RenderTextScrollbar.pack()
+    RenderTextScrollbar.place(x=300, y=200)
+    TempFont = font.Font(g_Tk, size=10, family='Consolas')
+    RenderText = Text(g_Tk, width=100, height=20, borderwidth=12, bg='white', relief='groove')
+    RenderText.pack()
+    RenderText.place(x=10, y=110)
+
+
+
+def InitMapImage():
+    global RenderText
+
+    TempFont = font.Font(g_Tk, size=10, family='Consolas')
+    ImageText = Label(g_Tk,bg = 'white',width=30, height=13, borderwidth=12, relief='groove')
+    ImageText.place(x=10, y=440)
+    import googlemaps
+    gmaps = googlemaps.Client(key='AIzaSyD6jqnkXdupc67xatq68U22c_-yTSwVvsY')
+    text = InputLabel.get()
+
+    if(text == '중국'):
+        geocode_result = gmaps.geocode('중국', language='ko')
+        station_lat = 0
+        station_lng = 0
+        tmp_loc = geocode_result[0].get('geometry')
+        station_lat= tmp_loc['location']['lat']
+        station_lng= tmp_loc['location']['lng']
+
+        import folium
+        map_osm = folium.Map(location=[station_lat,station_lng],zoom_start=3)
+        folium.Marker(location=[station_lat, station_lng], popup='중국',
+                      icon=folium.Icon(color='blue', icon='star')).add_to(map_osm)
+        map_osm.save('map.html')
+
+        photo = PhotoImage(file="1중국.gif")
+        ImageText = Label(g_Tk,image=photo)
+        ImageText.image = photo
+        ImageText.place(x=10,y=440)
+
+
+    elif(text == '일본'):
+        geocode_result = gmaps.geocode('일본', language='ko')
+        station_lat = 0
+        station_lng = 0
+        tmp_loc = geocode_result[0].get('geometry')
+        station_lat = tmp_loc['location']['lat']
+        station_lng = tmp_loc['location']['lng']
+        import folium
+        map_osm = folium.Map(location=[station_lat, station_lng], zoom_start=3)
+        folium.Marker(location=[station_lat, station_lng], popup='일본',
+                      icon=folium.Icon(color='blue', icon='star')).add_to(map_osm)
+        map_osm.save('map.html')
+
+        photo = PhotoImage(file="일본.gif")
+        ImageText = Label(g_Tk, image=photo)
+        ImageText.image = photo
+        ImageText.place(x=10, y=440)
+    elif(text == '터키'):
+        geocode_result = gmaps.geocode('터키', language='ko')
+        station_lat = 0
+        station_lng = 0
+        tmp_loc = geocode_result[0].get('geometry')
+        station_lat = tmp_loc['location']['lat']
+        station_lng = tmp_loc['location']['lng']
+        import folium
+        map_osm = folium.Map(location=[station_lat, station_lng], zoom_start=3)
+        folium.Marker(location=[station_lat, station_lng], popup='터키',
+                      icon=folium.Icon(color='blue', icon='star')).add_to(map_osm)
+        map_osm.save('map.html')
+
+        photo = PhotoImage(file="터키.gif")
+        ImageText = Label(g_Tk, image=photo)
+        ImageText.image = photo
+        ImageText.place(x=10, y=440)
+    elif(text == '필리핀'):
+        geocode_result = gmaps.geocode('필리핀', language='ko')
+        station_lat = 0
+        station_lng = 0
+        tmp_loc = geocode_result[0].get('geometry')
+        station_lat = tmp_loc['location']['lat']
+        station_lng = tmp_loc['location']['lng']
+        import folium
+        map_osm = folium.Map(location=[station_lat, station_lng], zoom_start=3)
+        folium.Marker(location=[station_lat, station_lng], popup='필리핀',
+                      icon=folium.Icon(color='blue', icon='star')).add_to(map_osm)
+        map_osm.save('map.html')
+        photo = PhotoImage(file="필리핀.gif")
+        ImageText = Label(g_Tk, image=photo)
+        ImageText.image = photo
+        ImageText.place(x=10, y=440)
+
+    elif (text == '아일랜드'):
+        geocode_result = gmaps.geocode('아일랜드', language='ko')
+        station_lat = 0
+        station_lng = 0
+        tmp_loc = geocode_result[0].get('geometry')
+        station_lat = tmp_loc['location']['lat']
+        station_lng = tmp_loc['location']['lng']
+        import folium
+        map_osm = folium.Map(location=[station_lat, station_lng], zoom_start=3)
+        folium.Marker(location=[station_lat, station_lng], popup='아일랜드',
+                      icon=folium.Icon(color='blue', icon='star')).add_to(map_osm)
+        map_osm.save('map.html')
+        photo = PhotoImage(file="아일랜드.PNG")
+        ImageText = Label(g_Tk, image=photo)
+        ImageText.image = photo
+        ImageText.place(x=10, y=440)
+
+def InitSendEmailButton():
+    TempFont = font.Font(g_Tk, size=13, family='Consolas')
+    buttonEmail = Button(g_Tk, bg='#00D7FF', text='  Email  ', borderwidth=30, fg='white', command=Send)
+    buttonEmail.place(x=300, y=450)
+    TempFont = font.Font(g_Tk, size=12, family='Consolas')
+    buttonTele = Button(g_Tk, bg='#00D7FF', text='TeleGram', borderwidth=30, fg='white',command = Tele)
+    buttonTele.place(x=300, y=550)
+
+
+def Send():
+    global RenderText
+    import smtplib
+    from email.mime.text import MIMEText
+
+    google_server = smtplib.SMTP('smtp.gmail.com', 587)
+    google_server.starttls()
+    google_server.login('wlswlsdk23@gmail.com', 'lfdhkxurbzqwfhyc')
+
+    contents = RenderText.get("1.0", END)
+    msg = MIMEText(contents)
+    msg['Subject'] = '서치정보'
+
+    google_server.sendmail("wlswlsdk23@gmail.com", "wlswlsdk23@naver.com", msg.as_string())
+    google_server.quit()
+def Tele():
+    import telepot
+    bot = telepot.Bot("1857752351:AAEUs8CtdpaODE4Mvz9XKMI7DGPz4olNgP8")
+    message = RenderText.get("1.0", END)
+    bot.sendMessage(1650780988,message)
+
+InitTopText()  # 제목라벨 출력
+InitInputLabel()
+
+InitSearchButton()  # 버튼 만들어주기
+InitRenderText()
+InitSendEmailButton()
+InitMapImage()
+
+g_Tk.mainloop()
